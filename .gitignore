@@ -1,0 +1,4 @@
+.*.swp
+.build/
+IP-Country-DB_File-*/
+IP-Country-DB_File-*.tar.gz
