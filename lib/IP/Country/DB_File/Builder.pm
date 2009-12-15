@@ -7,7 +7,7 @@ use DB_File ();
 use Fcntl ();
 
 BEGIN {
-    $VERSION = '1.99_02';
+    $VERSION = '1.99_03';
     
     require Exporter;
     @ISA = qw(Exporter);

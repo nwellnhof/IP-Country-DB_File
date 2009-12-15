@@ -1,6 +1,10 @@
 Revision history for Perl module IP::Country::DB_File
 
+1.99_03
+        - Add back DB_File as prereq
+
 1.99_02
+        - Move to Dist::Zilla
 	- Add -v option to command function
 	- Remove statistics files when -f or -b fails and -r is also given to
 	  command function
