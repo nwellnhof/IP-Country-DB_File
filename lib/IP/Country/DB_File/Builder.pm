@@ -7,7 +7,7 @@ use DB_File ();
 use Fcntl ();
 
 BEGIN {
-    $VERSION = '1.99_03';
+    $VERSION = '2.00';
     
     require Exporter;
     @ISA = qw(Exporter);
@@ -41,7 +41,7 @@ sub new {
     return bless($this, $class);
 }
 
-sub store_ip_range {
+sub _store_ip_range {
     my ($this, $start, $end, $cc) = @_;
 
     my $key  = pack('N', $end - 1);
@@ -52,18 +52,18 @@ sub store_ip_range {
     $this->{address_count} += $end - $start;
 }
 
-sub store_private_networks {
+sub _store_private_networks {
     my $this = shift;
 
     # 10.0.0.0
-    $this->store_ip_range(0x0a000000, 0x0b000000, '**');
+    $this->_store_ip_range(0x0a000000, 0x0b000000, '**');
     # 172.16.0.0
-    $this->store_ip_range(0xac100000, 0xac200000, '**');
+    $this->_store_ip_range(0xac100000, 0xac200000, '**');
     # 192.168.0.0
-    $this->store_ip_range(0xc0a80000, 0xc0a90000, '**');
+    $this->_store_ip_range(0xc0a80000, 0xc0a90000, '**');
 }
 
-sub import_file {
+sub _import_file {
     my ($this, $file) = @_;
     
     my $count = 0;
@@ -97,7 +97,7 @@ sub import_file {
             $prev_end += $value;
         }
         else {
-            $this->store_ip_range($prev_start, $prev_end, $prev_cc)
+            $this->_store_ip_range($prev_start, $prev_end, $prev_cc)
                 if $prev_cc;
 
             $prev_start = $ip_num;
@@ -107,12 +107,12 @@ sub import_file {
         }
     }
 
-    $this->store_ip_range($prev_start, $prev_end, $prev_cc) if $prev_cc;
+    $this->_store_ip_range($prev_start, $prev_end, $prev_cc) if $prev_cc;
     
     return $count;
 }
 
-sub sync {
+sub _sync {
     my $this = shift;
 
     $this->{db}->sync() >= 0 or die("dbsync: $!");
@@ -130,7 +130,7 @@ sub build {
                    "maybe you have to fetch files first");
 
         eval {
-            $this->import_file($file);
+            $this->_import_file($file);
         };
 
         my $error = $@;
@@ -138,9 +138,9 @@ sub build {
         die($error) if $error;
     }
 
-    $this->store_private_networks();
+    $this->_store_private_networks();
 
-    $this->sync();
+    $this->_sync();
 }
 
 # functions

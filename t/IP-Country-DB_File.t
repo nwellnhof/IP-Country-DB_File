@@ -10,9 +10,9 @@ ok(defined($builder), 'new');
 
 local *FILE;
 ok(open(FILE, '<', 't/delegated-test'), 'open source file');
-ok($builder->import_file(*FILE) == 81, 'import file');
-$builder->store_private_networks();
-$builder->sync();
+ok($builder->_import_file(*FILE) == 81, 'import file');
+$builder->_store_private_networks();
+$builder->_sync();
 close(FILE);
 
 ok(-e $filename, 'create db');

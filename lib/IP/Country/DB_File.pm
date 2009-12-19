@@ -8,7 +8,7 @@ use Fcntl ();
 use Socket ();
 
 BEGIN {
-    $VERSION = '1.99_03';
+    $VERSION = '2.00';
 }
 
 sub new {

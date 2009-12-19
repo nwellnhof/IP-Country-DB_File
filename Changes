@@ -1,5 +1,8 @@
 Revision history for Perl module IP::Country::DB_File
 
+2.00
+        - Add Pod tests
+
 1.99_03
         - Add back DB_File as prereq
 
