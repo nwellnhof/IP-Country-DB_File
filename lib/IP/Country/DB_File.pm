@@ -1,15 +1,11 @@
 package IP::Country::DB_File;
-
 use strict;
-use vars qw($VERSION);
+
+# ABSTRACT: IP to country translation based on DB_File
 
 use DB_File ();
 use Fcntl ();
 use Socket ();
-
-BEGIN {
-    $VERSION = '2.00';
-}
 
 sub new {
     my ($class, $db_file) = @_;
@@ -70,10 +66,6 @@ sub db_time {
 
 __END__
 
-=head1 NAME
-
-IP::Country::DB_File - IP to country translation based on DB_File
-
 =head1 SYNOPSIS
 
  use IP::Country::DB_File;
@@ -133,17 +125,5 @@ Returns the mtime of the DB file.
 =head1 SEE ALSO
 
 L<IP::Country>, L<IP::Country::DB_File::Builder>
-
-=head1 AUTHOR
-
-Nick Wellnhofer <wellnhofer@aevum.de>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) Nick Wellnhofer, 2009
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.6.0 or,
-at your option, any later version of Perl 5 you may have available.
 
 =cut

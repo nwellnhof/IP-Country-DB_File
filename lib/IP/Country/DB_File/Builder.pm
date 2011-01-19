@@ -1,14 +1,14 @@
 package IP::Country::DB_File::Builder;
-
 use strict;
-use vars qw($VERSION @ISA @EXPORT @rirs);
+
+# ABSTRACT: Build an IP address to country code database
+
+use vars qw(@ISA @EXPORT @rirs);
 
 use DB_File ();
 use Fcntl ();
 
 BEGIN {
-    $VERSION = '2.00';
-    
     require Exporter;
     @ISA = qw(Exporter);
     @EXPORT = qw(fetch_files remove_files command);
@@ -66,11 +66,8 @@ sub _store_private_networks {
 sub _import_file {
     my ($this, $file) = @_;
     
-    my $count = 0;
-    my $prev_start = 0;
-    my $prev_end   = 0;
-    my $prev_cc    = '';
     my $seen_header;
+    my @ranges;
 
     while(my $line = readline($file)) {
         next if $line =~ /^#/ or $line !~ /\S/;
@@ -89,19 +86,29 @@ sub _import_file {
 
         my $ip_num = unpack('N', pack('C4', split(/\./, $start)));
 
-        die("IP addresses not sorted (line $.)")
-            if $ip_num < $prev_end;
+        push(@ranges, [ $ip_num, $value, $cc ]);
+    }
+
+    @ranges = sort { $a->[0] <=> $b->[0] } @ranges;
+
+    my $count = 0;
+    my $prev_start = 0;
+    my $prev_end   = 0;
+    my $prev_cc    = '';
+
+    for my $range (@ranges) {
+        my ($ip_num, $size, $cc) = @$range;
 
         if($ip_num == $prev_end && $prev_cc eq $cc) {
             # optimization: concat ranges of same country
-            $prev_end += $value;
+            $prev_end += $size;
         }
         else {
             $this->_store_ip_range($prev_start, $prev_end, $prev_cc)
                 if $prev_cc;
 
             $prev_start = $ip_num;
-            $prev_end   = $ip_num + $value;
+            $prev_end   = $ip_num + $size;
             $prev_cc    = $cc;
             ++$count;
         }
@@ -228,10 +235,6 @@ sub command {
 
 __END__
 
-=head1 NAME
-
-IP::Country::DB_File::Builder - Build an IP address to country code database
-
 =head1 SYNOPSIS
 
  perl -MIP::Country::DB_File::Builder -e command -- -fbr
@@ -334,17 +337,5 @@ directory for the statistics files
 
 You should provide at least one of the I<-f>, I<-b> or I<-r> options, otherwise
 this routine does nothing.
-
-=head1 AUTHOR
-
-Nick Wellnhofer <wellnhofer@aevum.de>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) Nick Wellnhofer, 2009
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.6.0 or,
-at your option, any later version of Perl 5 you may have available.
 
 =cut

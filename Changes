@@ -1,5 +1,9 @@
 Revision history for Perl module IP::Country::DB_File
 
+2.01
+        - Some registries publish unsorted files, so always sort them
+        - Dist::Zilla updates
+
 2.00
         - Add Pod tests
 
