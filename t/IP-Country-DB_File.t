@@ -10,7 +10,7 @@ ok(defined($builder), 'new');
 
 local *FILE;
 ok(open(FILE, '<', 't/delegated-test'), 'open source file');
-ok($builder->_import_file(*FILE) == 81, 'import file');
+is($builder->_import_file(*FILE), 81, 'import file');
 $builder->_store_private_networks();
 $builder->_sync();
 close(FILE);
@@ -19,7 +19,9 @@ ok(-e $filename, 'create db');
 
 my $ipcc = IP::Country::DB_File->new($filename);
 
-ok(abs($ipcc->db_time() - time()) < 24 * 3600, 'db_time');
+my $db_time = $ipcc->db_time();
+my $now     = time();
+ok(abs($db_time - $now) < 60, "db_time ($db_time) near current time ($now)");
 
 my @tests = qw(
     0.0.0.0         ?
