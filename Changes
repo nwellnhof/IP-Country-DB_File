@@ -1,5 +1,11 @@
 Revision history for Perl module IP::Country::DB_File
 
+2.99_01 Aug 20 2014
+        - Major rewrite
+        - IPv6 support
+        - build_ipcc.pl script to build the database
+        - Incompatible changes to Builder
+
 2.10  Aug 20 2014
         - Update locations of RIR statistics files
         - Add diagnostic output to db_time test
