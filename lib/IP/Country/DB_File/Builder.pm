@@ -101,6 +101,7 @@ sub _import_file {
             split(/\|/, $line);
 
         next if $start eq '*'; # Summary lines.
+        next if $cc eq '';
 
         # TODO (paranoid): validate $cc, $start and $value
 
