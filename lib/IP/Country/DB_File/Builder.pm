@@ -1,5 +1,6 @@
 package IP::Country::DB_File::Builder;
 use strict;
+use warnings;
 
 # ABSTRACT: Build an IP address to country code database
 

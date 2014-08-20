@@ -1,3 +1,6 @@
+use strict;
+use warnings;
+
 use Test::More tests => 51;
 BEGIN { use_ok('IP::Country::DB_File') };
 BEGIN { use_ok('IP::Country::DB_File::Builder') };

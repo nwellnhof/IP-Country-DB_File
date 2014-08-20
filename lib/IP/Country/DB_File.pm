@@ -1,5 +1,6 @@
 package IP::Country::DB_File;
 use strict;
+use warnings;
 
 # ABSTRACT: IP to country translation based on DB_File
 
