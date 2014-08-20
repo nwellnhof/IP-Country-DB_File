@@ -220,7 +220,7 @@ sub fetch_files {
         my $ftp_dir = "/pub/stats/$name";
         my $filename = "delegated-$name-extended-latest";
 
-        print("fetching ftp://$server$ftp_dir/$filename\n") if $verbose;
+        print("Fetching ftp://$server$ftp_dir/$filename\n") if $verbose;
 
         my $ftp = Net::FTP->new($server)
             or die("Can't connect to FTP server $server: $@");

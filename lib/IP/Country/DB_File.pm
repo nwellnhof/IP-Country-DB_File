@@ -167,7 +167,7 @@ internet registries. No third-party tie-in.
 
 =head2 new
 
-    my $ipcc = IP::Country::DB_File->new([ $db_file ]);
+    my $ipcc = IP::Country::DB_File->new( [$db_file] );
 
 Creates a new object and opens the database file I<$db_file>. I<$db_file>
 defaults to F<ipcc.db>. The database file can be built with
