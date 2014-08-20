@@ -41,6 +41,11 @@ sub new {
     return bless($this, $class);
 }
 
+# Accessors
+sub num_ranges_v4    { $_[0]->{num_ranges_v4} }
+sub num_ranges_v6    { $_[0]->{num_ranges_v6} }
+sub num_addresses_v4 { $_[0]->{num_addresses_v4} }
+
 sub _store_ip_range {
     my ($this, $type, $start, $end, $cc) = @_;
 
@@ -50,16 +55,17 @@ sub _store_ip_range {
         $key  = pack('aN', '4', $end - 1);
         $data = pack('Na2', $start, $cc);
 
-        $this->{address_count} += $end - $start;
+        $this->{num_ranges_v4}    += 1;
+        $this->{num_addresses_v4} += $end - $start;
     }
     elsif ($type eq 'ipv6') {
         $key  = '6' . int64_to_net($end - 1);
         $data = pack('a8a2', int64_to_net($start), $cc);
+
+        $this->{num_ranges_v6} += 1;
     }
 
     $this->{db}->put($key, $data) >= 0 or die("dbput: $!");
-
-    ++$this->{range_count};
 }
 
 sub _store_private_networks {
