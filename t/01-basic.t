@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 51;
+use Test::More tests => 69;
 BEGIN { use_ok('IP::Country::DB_File') };
 BEGIN { use_ok('IP::Country::DB_File::Builder') };
 
@@ -11,12 +11,11 @@ unlink($filename);
 my $builder = IP::Country::DB_File::Builder->new($filename);
 ok(defined($builder), 'new');
 
-local *FILE;
-ok(open(FILE, '<', 't/delegated-test'), 'open source file');
-is($builder->_import_file(*FILE), 81, 'import file');
+ok(open(my $file, '<', 't/delegated-test'), 'open source file');
+is($builder->_import_file($file, 0), 86, 'import file');
 $builder->_store_private_networks();
 $builder->_sync();
-close(FILE);
+close($file);
 
 ok(-e $filename, 'create db');
 
@@ -26,7 +25,7 @@ my $db_time = $ipcc->db_time();
 my $now     = time();
 ok(abs($db_time - $now) < 60, "db_time ($db_time) near current time ($now)");
 
-my @tests = qw(
+my @tests_v4 = qw(
     0.0.0.0         ?
     0.0.0.1         ?
     0.0.1.0         ?
@@ -73,10 +72,38 @@ my @tests = qw(
     255.255.255.255 ?
 );
 
-for(my $i=0; $i<@tests; $i+=2) {
-    my ($ip, $test_cc) = ($tests[$i], $tests[$i+1]);
+for(my $i=0; $i<@tests_v4; $i+=2) {
+    my ($ip, $test_cc) = ($tests_v4[$i], $tests_v4[$i+1]);
     #print STDERR ("\n*** $ip $cc ", $ipcc->inet_atocc($ip));
     my $cc = $ipcc->inet_atocc($ip);
+    $cc = '?' unless defined($cc);
+    ok($cc eq $test_cc, "lookup $ip, got $cc, expected $test_cc");
+}
+
+my @tests_v6 = qw(
+    ::                                      ?
+    ::1                                     ?
+    2001:5ff::                              ?
+    2001:5ff:ffff:ffff:ffff:ffff:ffff:ffff  ?
+    2001:600::                              EU
+    2001:600:1fff:ffff::                    EU
+    2001:600:2000::                         EU
+    2001:600:ffff:ffff::                    EU
+    2001:601::                              ?
+    2a02:650:a3f0:4626:94f0:b695:a178:f9d2  DE
+    2a02:660:ffff:ffff::                    RS
+    2a02:661::                              ?
+    d730:3039:322c:4516:bb78:caf4:1d88:c62f ?
+    fbff:ffff:ffff:ffff::                   ?
+    fc00::                                  **
+    fdff:ffff:ffff:ffff::                   **
+    fe00::                                  ?
+    ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff ?
+);
+
+for (my $i = 0; $i < @tests_v6; $i += 2) {
+    my ($ip, $test_cc) = ($tests_v6[$i], $tests_v6[$i+1]);
+    my $cc = $ipcc->inet6_atocc($ip);
     $cc = '?' unless defined($cc);
     ok($cc eq $test_cc, "lookup $ip, got $cc, expected $test_cc");
 }

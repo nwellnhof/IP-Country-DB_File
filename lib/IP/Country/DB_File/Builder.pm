@@ -4,25 +4,24 @@ use warnings;
 
 # ABSTRACT: Build an IP address to country code database
 
-use vars qw(@ISA @EXPORT @rirs);
-
 use DB_File ();
 use Fcntl ();
+use Math::Int64 qw(int64 int64_to_net net_to_int64);
+use Net::FTP ();
+use Socket ();
 
-BEGIN {
-    require Exporter;
-    @ISA = qw(Exporter);
-    @EXPORT = qw(fetch_files remove_files command);
+# Regional Internet Registries
+my @rirs = (
+    { name=>'arin',    server=>'ftp.arin.net'    },
+    { name=>'ripencc', server=>'ftp.ripe.net'    },
+    { name=>'afrinic', server=>'ftp.afrinic.net' },
+    { name=>'apnic',   server=>'ftp.apnic.net'   },
+    { name=>'lacnic',  server=>'ftp.lacnic.net'  },
+);
 
-    # Regional Internet Registries
-    @rirs = (
-        { name=>'arin',    server=>'ftp.arin.net'    },
-        { name=>'ripencc', server=>'ftp.ripe.net'    },
-        { name=>'afrinic', server=>'ftp.afrinic.net' },
-        { name=>'apnic',   server=>'ftp.apnic.net'   },
-        { name=>'lacnic',  server=>'ftp.lacnic.net'  },
-    );
-}
+# Constants
+sub EXCLUDE_IPV4 { 1 }
+sub EXCLUDE_IPV6 { 2 }
 
 sub new {
     my ($class, $db_file) = @_;
@@ -38,42 +37,56 @@ sub new {
     $this->{db} = tie(%db, 'DB_File', $db_file, $flags, 0666,
                       $DB_File::DB_BTREE)
         or die("Can't open database $db_file: $!");
-    
+
     return bless($this, $class);
 }
 
 sub _store_ip_range {
-    my ($this, $start, $end, $cc) = @_;
+    my ($this, $type, $start, $end, $cc) = @_;
 
-    my $key  = pack('N', $end - 1);
-    my $data = pack('Na2', $start, $cc);
+    my ($key, $data);
+
+    if ($type eq 'ipv4') {
+        $key  = pack('aN', '4', $end - 1);
+        $data = pack('Na2', $start, $cc);
+
+        $this->{address_count} += $end - $start;
+    }
+    elsif ($type eq 'ipv6') {
+        $key  = '6' . int64_to_net($end - 1);
+        $data = pack('a8a2', int64_to_net($start), $cc);
+    }
+
     $this->{db}->put($key, $data) >= 0 or die("dbput: $!");
 
     ++$this->{range_count};
-    $this->{address_count} += $end - $start;
 }
 
 sub _store_private_networks {
     my $this = shift;
 
     # 10.0.0.0
-    $this->_store_ip_range(0x0a000000, 0x0b000000, '**');
+    $this->_store_ip_range('ipv4', 0x0a000000, 0x0b000000, '**');
     # 172.16.0.0
-    $this->_store_ip_range(0xac100000, 0xac200000, '**');
+    $this->_store_ip_range('ipv4', 0xac100000, 0xac200000, '**');
     # 192.168.0.0
-    $this->_store_ip_range(0xc0a80000, 0xc0a90000, '**');
+    $this->_store_ip_range('ipv4', 0xc0a80000, 0xc0a90000, '**');
+
+    # fc00::/7
+    $this->_store_ip_range('ipv6', int64(0xfc) << 56, int64(0xfe) << 56, '**');
 }
 
 sub _import_file {
-    my ($this, $file) = @_;
-    
-    my $seen_header;
-    my @ranges;
+    my ($this, $file, $flags) = @_;
 
-    while(my $line = readline($file)) {
+    my $seen_header;
+    my (@ranges_v4, @ranges_v6);
+
+    while (my $line = readline($file)) {
         next if $line =~ /^#/ or $line !~ /\S/;
 
-        unless($seen_header) {
+        if (!$seen_header) {
+            # Ignore first line.
             $seen_header = 1;
             next;
         }
@@ -81,31 +94,69 @@ sub _import_file {
         my ($registry, $cc, $type, $start, $value, $date, $status) =
             split(/\|/, $line);
 
-        next unless $type eq 'ipv4' && $start ne '*';
+        next if $start eq '*'; # Summary lines.
 
         # TODO (paranoid): validate $cc, $start and $value
 
-        my $ip_num = unpack('N', pack('C4', split(/\./, $start)));
+        if ($type eq 'ipv4') {
+            next if $flags & EXCLUDE_IPV4;
 
-        push(@ranges, [ $ip_num, $value, $cc ]);
+            my $ip_num = unpack('N', pack('C4', split(/\./, $start)));
+            my $size   = $value;
+
+            push(@ranges_v4, [ $ip_num, $size, $cc ]);
+        }
+        elsif ($type eq 'ipv6') {
+            next if $flags & EXCLUDE_IPV6;
+
+            die("IPv6 range too large: $value")
+                if $value > 64;
+
+            my $addr   = Socket::inet_pton(Socket::AF_INET6, $start);
+            my $ip_num = net_to_int64(substr($addr, 0, 8));
+            my $size   = int64(1) << (64 - $value);
+
+            push(@ranges_v6, [ $ip_num, $size, $cc ]);
+        }
+        else {
+            next;
+        }
     }
 
-    @ranges = sort { $a->[0] <=> $b->[0] } @ranges;
-
     my $count = 0;
-    my $prev_start = 0;
-    my $prev_end   = 0;
-    my $prev_cc    = '';
+    $count += $this->_store_ip_ranges('ipv4', \@ranges_v4);
+    $count += $this->_store_ip_ranges('ipv6', \@ranges_v6);
 
-    for my $range (@ranges) {
+    return $count;
+}
+
+sub _store_ip_ranges {
+    my ($this, $type, $ranges) = @_;
+
+    my @sorted_ranges = sort { $a->[0] <=> $b->[0] } @$ranges;
+
+    my $count   = 0;
+    my $prev_cc = '';
+    my ($prev_start, $prev_end);
+
+    if ($type eq 'ipv4') {
+        $prev_start = 0;
+        $prev_end   = 0;
+    }
+    elsif ($type eq 'ipv6') {
+        $prev_start = int64(0);
+        $prev_end   = int64(0);
+    }
+
+    for my $range (@sorted_ranges) {
         my ($ip_num, $size, $cc) = @$range;
 
-        if($ip_num == $prev_end && $prev_cc eq $cc) {
-            # optimization: concat ranges of same country
+        if ($ip_num == $prev_end && $prev_cc eq $cc) {
+            # Concat ranges of same country
             $prev_end += $size;
         }
         else {
-            $this->_store_ip_range($prev_start, $prev_end, $prev_cc)
+            $this->_store_ip_range($type, $prev_start, $prev_end, $prev_cc)
                 if $prev_cc;
 
             $prev_start = $ip_num;
@@ -115,8 +166,9 @@ sub _import_file {
         }
     }
 
-    $this->_store_ip_range($prev_start, $prev_end, $prev_cc) if $prev_cc;
-    
+    $this->_store_ip_range($type, $prev_start, $prev_end, $prev_cc)
+        if $prev_cc;
+
     return $count;
 }
 
@@ -127,8 +179,9 @@ sub _sync {
 }
 
 sub build {
-    my ($this, $dir) = @_;
-    $dir = '.' unless defined($dir);
+    my ($this, $dir, $flags) = @_;
+    $dir   = '.' if !defined($dir);
+    $flags = 0   if !defined($flags);
 
     for my $rir (@rirs) {
         my $file;
@@ -138,12 +191,12 @@ sub build {
                    "maybe you have to fetch files first");
 
         eval {
-            $this->_import_file($file);
+            $this->_import_file($file, $flags);
         };
 
         my $error = $@;
         close($file);
-        die($error) if $error;
+        die("$filename: $error") if $error;
     }
 
     $this->_store_private_networks();
@@ -151,13 +204,9 @@ sub build {
     $this->_sync();
 }
 
-# functions
-
 sub fetch_files {
-    my ($dir, $verbose) = @_;
+    my ($class, $dir, $verbose) = @_;
     $dir = '.' unless defined($dir);
-
-    require Net::FTP;
 
     for my $rir (@rirs) {
         my $server = $rir->{server};
@@ -182,53 +231,12 @@ sub fetch_files {
 }
 
 sub remove_files {
-    my $dir = shift;
+    my ($class, $dir) = @_;
     $dir = '.' unless defined($dir);
 
     for my $rir (@rirs) {
         my $name = $rir->{name};
         unlink("$dir/delegated-$name");
-    }
-}
-
-sub command {
-    require Getopt::Std;
-    
-    my %opts;
-    Getopt::Std::getopts('vfbrd:', \%opts) or exit(1);
-    
-    die("extraneous arguments\n") if @ARGV > 1;
-    
-    my $dir = $opts{d};
-    
-    eval {
-        fetch_files($dir, $opts{v}) if $opts{f};
-    
-        if($opts{b}) {
-            print("building database...\n") if $opts{v};
-
-            my $builder = __PACKAGE__->new($ARGV[0]);
-            $builder->build($dir);
-
-            # we define usable IPv4 address space as 1.0.0.0 - 223.255.255.255
-            # excluding 127.0.0.0/8
-             
-            print(
-                "total merged IP ranges: $builder->{range_count}\n",
-                "total IP addresses: $builder->{address_count}\n",
-                sprintf('%.2f', 100 * $builder->{address_count} / 0xde000000),
-                "% of usable IPv4 address space\n",
-            ) if $opts{v};
-        }
-    };
-
-    if($@) {
-        print STDERR ($@);
-    }
-
-    if($opts{r}) {
-        print("removing statistics files\n") if $opts{v};
-        remove_files($dir);
     }
 }
 
@@ -238,14 +246,12 @@ __END__
 
 =head1 SYNOPSIS
 
- perl -MIP::Country::DB_File::Builder -e command -- -fbr
-  
- use IP::Country::DB_File::Builder;
- 
- fetch_files();
- my $builder = IP::Country::DB_File::Builder->new('ipcc.db');
- $builder->build();
- remove_files();
+    use IP::Country::DB_File::Builder;
+
+    IP::Country::DB_File::Builder->fetch_files();
+    my $builder = IP::Country::DB_File::Builder->new('ipcc.db');
+    $builder->build();
+    IP::Country::DB_File::Builder->remove_files();
 
 =head1 DESCRIPTION
 
@@ -256,87 +262,53 @@ The database is built from the publically available statistics files of the
 Regional Internet Registries. Currently, the files are downloaded from the
 following hard-coded locations:
 
- ftp://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest
- ftp://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-extended-latest
- ftp://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-extended-latest
- ftp://ftp.apnic.net/pub/stats/apnic/delegated-apnic-extended-latest
- ftp://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-extended-latest
+    ftp://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest
+    ftp://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-extended-latest
+    ftp://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-extended-latest
+    ftp://ftp.apnic.net/pub/stats/apnic/delegated-apnic-extended-latest
+    ftp://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-extended-latest
 
-You can build the database directly in Perl, or by calling the I<command>
-subroutine from the command line. Since the country code data changes
-constantly, you should consider updating the database from time to time.
-You can also use a database built on a different machine as long as the
-I<libdb> versions are compatible.
+You can build the database directly from Perl, or by calling the
+C<build_ipcc.pl> command. Since the country code data changes occasionally,
+you should consider updating the database from time to time. You can also use
+a database built on a different machine as long as the I<libdb> versions are
+compatible.
 
 =head1 CONSTRUCTOR
 
 =head2 new
 
- my $builder = IP::Country::DB_File::Builder->new([ $db_file ]);
+    my $builder = IP::Country::DB_File::Builder->new( [$db_file] );
 
 Creates a new builder object and the database file I<$db_file>. I<$db_file>
 defaults to F<ipcc.db>. The database file is truncated if it already exists.
 
-=head1 OBJECT METHODS
+=head1 METHODS
 
 =head2 build
 
- $builder->build([ $dir ]);
+    $builder->build( [$dir] );
 
 Builds a database from the statistics files in directory I<$dir>. I<$dir>
 defaults to the current directory.
 
-=head1 FUNCTIONS
-
-The following functions are exported by default.
+=head1 CLASS METHODS
 
 =head2 fetch_files
 
- fetch_files([ $dir ]);
+    IP::Country::DB_File::Builder->fetch_files( [$dir] );
 
 Fetches the statistics files from the FTP servers of the RIRs and stores them
-in I<$dir>. I<$dir> defaults to the current directory. This function requires
-L<Net::FTP>.
+in I<$dir>. I<$dir> defaults to the current directory.
 
 This function only fetches files and doesn't build the database yet.
 
 =head2 remove_files
 
- remove_files([ $dir ]);
+    IP::Country::DB_File::Builder->remove_files( [$dir] );
 
 Deletes the previously fetched statistics files in I<$dir>. I<$dir> defaults
 to the current directory.
 
-=head2 command
-
-You can call this subroutine from the command line to update the country code
-database like this:
-
- perl -MIP::Country::DB_File::Builder -e command -- [options] [dbfile]
-
-I<dbfile> is the database file and defaults to F<ipcc.db>. Options include
-
-=head3 -f
-
-fetch files
-
-=head3 -b
-
-build database
-
-=head3 -v
-
-verbose output
-
-=head3 -r
-
-remove files
-
-=head3 -d [dir]
-
-directory for the statistics files
-
-You should provide at least one of the I<-f>, I<-b> or I<-r> options, otherwise
-this routine does nothing.
-
 =cut
+
