@@ -103,7 +103,11 @@ sub _import_file {
         next if $start eq '*'; # Summary lines.
         next if $cc eq '';
 
-        # TODO (paranoid): validate $cc, $start and $value
+        $cc = uc($cc);
+        die("Invalid country code '$cc'")
+            if $cc !~ /^[A-Z]{2}\z/;
+
+        # TODO (paranoid): validate $start and $value
 
         if ($type eq 'ipv4') {
             next if $flags & EXCLUDE_IPV4;
