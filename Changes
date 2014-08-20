@@ -1,16 +1,22 @@
 Revision history for Perl module IP::Country::DB_File
 
-2.01
+2.10  Aug 20 2014
+        - Update locations of RIR statistics files
+        - Add diagnostic output to db_time test
+        - Add Perl 5.8 to prereqs
+        - Use warnings
+
+2.01  Jan 20 2011
         - Some registries publish unsorted files, so always sort them
         - Dist::Zilla updates
 
-2.00
+2.00  Dec 19 2009
         - Add Pod tests
 
-1.99_03
+1.99_03  Dec 15 2009
         - Add back DB_File as prereq
 
-1.99_02
+1.99_02  Dec 15 2009
         - Move to Dist::Zilla
 	- Add -v option to command function
 	- Remove statistics files when -f or -b fails and -r is also given to
