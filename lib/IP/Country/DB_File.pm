@@ -173,7 +173,7 @@ Creates a new object and opens the database file I<$db_file>. I<$db_file>
 defaults to F<ipcc.db>. The database file can be built with
 L<IP::Country::DB_File::Builder> or the C<build_ipcc.pl> command.
 
-=head1 OBJECT METHODS
+=head1 METHODS
 
 =head2 inet_atocc
 
@@ -183,10 +183,11 @@ Looks up the country code of host I<$host>. I<$host> can either be an
 IPv4 address in dotted quad notation or a hostname.
 
 If successful, returns the country code. In most cases this is an ISO-3166-1
-alpha-2 country code, but there are also codes like 'EU' for Europe. See the
-documentation of L<IP::Country> for more details.
+alpha-2 country code, but there are also generic codes like C<EU> for Europe
+or C<AP> for Asia/Pacific. All country codes consist of two uppercase
+letters.
 
-Returns '**' for private IP addresses.
+Returns C<**> for private IP addresses.
 
 Returns undef if there's no country code listed for the IP address, the DNS
 lookup fails, or the host string is invalid.
