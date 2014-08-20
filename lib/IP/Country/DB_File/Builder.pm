@@ -162,7 +162,7 @@ sub fetch_files {
         my $server = $rir->{server};
         my $name = $rir->{name};
         my $ftp_dir = "/pub/stats/$name";
-        my $filename = "delegated-$name-latest";
+        my $filename = "delegated-$name-extended-latest";
 
         print("fetching ftp://$server$ftp_dir/$filename\n") if $verbose;
 
@@ -255,11 +255,11 @@ The database is built from the publically available statistics files of the
 Regional Internet Registries. Currently, the files are downloaded from the
 following hard-coded locations:
 
- ftp://ftp.arin.net/pub/stats/arin/delegated-arin-latest
- ftp://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest
- ftp://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-latest
- ftp://ftp.apnic.net/pub/stats/apnic/delegated-apnic-latest
- ftp://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-latest
+ ftp://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest
+ ftp://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-extended-latest
+ ftp://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-extended-latest
+ ftp://ftp.apnic.net/pub/stats/apnic/delegated-apnic-extended-latest
+ ftp://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-extended-latest
 
 You can build the database directly in Perl, or by calling the I<command>
 subroutine from the command line. Since the country code data changes
