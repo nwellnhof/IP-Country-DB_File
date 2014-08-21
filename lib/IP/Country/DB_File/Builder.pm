@@ -303,6 +303,27 @@ defaults to F<ipcc.db>. The database file is truncated if it already exists.
 Builds a database from the statistics files in directory I<$dir>. I<$dir>
 defaults to the current directory.
 
+=head2 num_ranges_v4
+
+    my $num = $builder->num_ranges_v4;
+
+Return the number of (possibly merged) IPv4 address ranges with country
+codes after a database build.
+
+=head2 num_ranges_v6
+
+    my $num = $builder->num_ranges_v6;
+
+Return the number of (possibly merged) IPv6 address ranges with country
+codes after a database build.
+
+=head2 num_addresses_v4
+
+    my $num = $builder->num_addresses_v4;
+
+Return the number of IPv4 addresses with country codes after a database
+build.
+
 =head1 CLASS METHODS
 
 =head2 fetch_files
