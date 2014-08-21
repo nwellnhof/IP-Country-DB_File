@@ -86,7 +86,7 @@ sub inet6_atocc {
             protocol => Socket::IPPROTO_TCP,
         });
         return undef if $err || !$result;
-        $addr = Socket::unpack_sockaddr_in6($result->{addr});
+        (undef, $addr) = Socket::unpack_sockaddr_in6($result->{addr});
     }
 
     $addr = substr($addr, 0, 8);
