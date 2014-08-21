@@ -11,7 +11,7 @@ use Math::Int64 qw(
     :native_if_available
 );
 use Net::FTP ();
-use Socket ();
+use Socket 1.94 ();
 
 # Regional Internet Registries
 my @rirs = (

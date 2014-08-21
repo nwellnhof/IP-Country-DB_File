@@ -6,7 +6,7 @@ use warnings;
 
 use DB_File ();
 use Fcntl ();
-use Socket ();
+use Socket 1.94 ();
 
 sub new {
     my ($class, $db_file) = @_;
