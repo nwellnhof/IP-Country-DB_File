@@ -6,7 +6,10 @@ use warnings;
 
 use DB_File ();
 use Fcntl ();
-use Math::Int64 qw(int64 int64_to_net net_to_int64);
+use Math::Int64 qw(
+    int64 int64_to_net net_to_int64
+    :native_if_available
+);
 use Net::FTP ();
 use Socket ();
 
