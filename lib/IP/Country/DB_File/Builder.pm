@@ -30,10 +30,7 @@ sub new {
     my ($class, $db_file) = @_;
     $db_file = 'ipcc.db' unless defined($db_file);
 
-    my $this = {
-        range_count   => 0,
-        address_count => 0,
-    };
+    my $this = {};
 
     my %db;
     my $flags = Fcntl::O_RDWR|Fcntl::O_CREAT|Fcntl::O_TRUNC;
