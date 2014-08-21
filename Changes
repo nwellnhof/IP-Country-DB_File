@@ -1,5 +1,10 @@
 Revision history for Perl module IP::Country::DB_File
 
+3.01  Aug 21 2014
+        - Require Socket version 1.94
+        - Fix for Socket versions below 2.005
+        - Support platforms without inet_pton
+
 3.00  Aug 21 2014
         - Try to fix failing test on Windows
         - Strict validation of country codes
