@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 69;
+use Test::More tests => 72;
 BEGIN { use_ok('IP::Country::DB_File') };
 BEGIN { use_ok('IP::Country::DB_File::Builder') };
 
@@ -16,6 +16,10 @@ is($builder->_import_file($file, 0), 86, 'import file');
 $builder->_store_private_networks();
 $builder->_sync();
 close($file);
+
+is($builder->num_ranges_v4, 84, 'num_ranges_v4');
+is($builder->num_ranges_v6, 6, 'num_ranges_v6');
+is($builder->num_addresses_v4, 40337408, 'num_addresses_v4');
 
 ok(-e $filename, 'create db');
 
