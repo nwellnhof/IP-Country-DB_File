@@ -1,5 +1,12 @@
 Revision history for Perl module IP::Country::DB_File
 
+3.00  Aug 21 2014
+        - Try to fix failing test on Windows
+        - Strict validation of country codes
+        - Minor optimizations
+        - Fix documentation
+        - Fix, test, and document statistics methods
+
 2.99_01 Aug 20 2014
         - Major rewrite
         - IPv6 support
