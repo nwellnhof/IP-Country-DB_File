@@ -72,22 +72,12 @@ sub inet6_ntocc {
 sub inet6_atocc {
     my ($this, $host) = @_;
 
-    my $final_char_code = ord(substr($host, -1));
-    my $addr;
-
-    if ($final_char_code >= 48 && $final_char_code <= 58) {
-        # Host ends with a digit or colon and must be numeric address.
-        $addr = Socket::inet_pton(Socket::AF_INET6, $host);
-        return undef if !defined($addr);
-    }
-    else {
-        my ($err, $result) = Socket::getaddrinfo($host, undef, {
-            family   => Socket::AF_INET6,
-            protocol => Socket::IPPROTO_TCP,
-        });
-        return undef if $err || !$result;
-        (undef, $addr) = Socket::unpack_sockaddr_in6($result->{addr});
-    }
+    my ($err, $result) = Socket::getaddrinfo($host, undef, {
+        family   => Socket::AF_INET6,
+        socktype => Socket::SOCK_STREAM,
+    });
+    return undef if $err || !$result;
+    my (undef, $addr) = Socket::unpack_sockaddr_in6($result->{addr});
 
     $addr = substr($addr, 0, 8);
 

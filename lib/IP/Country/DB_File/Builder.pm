@@ -123,7 +123,14 @@ sub _import_file {
             die("IPv6 range too large: $value")
                 if $value > 64;
 
-            my $addr   = Socket::inet_pton(Socket::AF_INET6, $start);
+            my ($err, $result) = Socket::getaddrinfo($start, undef, {
+                flags    => Socket::AI_NUMERICHOST,
+                family   => Socket::AF_INET6,
+                socktype => Socket::SOCK_STREAM,
+            });
+            die($err) if $err;
+            my (undef, $addr) = Socket::unpack_sockaddr_in6($result->{addr});
+
             my $ip_num = net_to_int64(substr($addr, 0, 8));
             my $size   = int64(1) << (64 - $value);
 
