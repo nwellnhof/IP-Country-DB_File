@@ -23,8 +23,8 @@ my @rirs = (
 );
 
 # Constants
-sub EXCLUDE_IPV4 { 1 }
-sub EXCLUDE_IPV6 { 2 }
+sub _EXCLUDE_IPV4 { 1 }
+sub _EXCLUDE_IPV6 { 2 }
 
 sub new {
     my ($class, $db_file) = @_;
@@ -110,7 +110,7 @@ sub _import_file {
         # TODO (paranoid): validate $start and $value
 
         if ($type eq 'ipv4') {
-            next if $flags & EXCLUDE_IPV4;
+            next if $flags & _EXCLUDE_IPV4;
 
             my $ip_num = unpack('N', pack('C4', split(/\./, $start)));
             my $size   = $value;
@@ -118,7 +118,7 @@ sub _import_file {
             push(@ranges_v4, [ $ip_num, $size, $cc ]);
         }
         elsif ($type eq 'ipv6') {
-            next if $flags & EXCLUDE_IPV6;
+            next if $flags & _EXCLUDE_IPV6;
 
             die("IPv6 range too large: $value")
                 if $value > 64;
