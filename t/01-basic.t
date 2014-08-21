@@ -8,18 +8,25 @@ BEGIN { use_ok('IP::Country::DB_File::Builder') };
 my $filename = 't/ipcc.db';
 unlink($filename);
 
-my $builder = IP::Country::DB_File::Builder->new($filename);
-ok(defined($builder), 'new');
+{
+    # Build the database in a separate lexical scope to make sure that
+    # the builder is destroyed before running the rest of the tests.
+    # Otherwise the DB file won't be closed and mtime won't be updated
+    # on Windows.
 
-ok(open(my $file, '<', 't/delegated-test'), 'open source file');
-is($builder->_import_file($file, 0), 86, 'import file');
-$builder->_store_private_networks();
-$builder->_sync();
-close($file);
+    my $builder = IP::Country::DB_File::Builder->new($filename);
+    ok(defined($builder), 'new');
 
-is($builder->num_ranges_v4, 84, 'num_ranges_v4');
-is($builder->num_ranges_v6, 6, 'num_ranges_v6');
-is($builder->num_addresses_v4, 40337408, 'num_addresses_v4');
+    ok(open(my $file, '<', 't/delegated-test'), 'open source file');
+    is($builder->_import_file($file, 0), 86, 'import file');
+    $builder->_store_private_networks();
+    $builder->_sync();
+    close($file);
+
+    is($builder->num_ranges_v4, 84, 'num_ranges_v4');
+    is($builder->num_ranges_v6, 6, 'num_ranges_v6');
+    is($builder->num_addresses_v4, 40337408, 'num_addresses_v4');
+}
 
 ok(-e $filename, 'create db');
 
