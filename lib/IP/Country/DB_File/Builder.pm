@@ -26,6 +26,22 @@ my @rirs = (
 sub _EXCLUDE_IPV4 { 1 }
 sub _EXCLUDE_IPV6 { 2 }
 
+# IPv6 support is broken in some Socket versions with older Perls.
+# (RT #98248)
+sub _ipv6_socket_broken {
+    return $^V < 5.14 && $Socket::VERSION >= 2.010;
+}
+
+sub _ipv6_supported {
+    my ($err, $result) = Socket::getaddrinfo('::1', undef, {
+        flags    => Socket::AI_NUMERICHOST,
+        family   => Socket::AF_INET6,
+        socktype => Socket::SOCK_STREAM,
+    });
+
+    return !$err && $result ? 1 : 0;
+}
+
 sub new {
     my ($class, $db_file) = @_;
     $db_file = 'ipcc.db' unless defined($db_file);
@@ -212,6 +228,19 @@ sub build {
     my ($this, $dir, $flags) = @_;
     $dir   = '.' if !defined($dir);
     $flags = 0   if !defined($flags);
+
+    if (!($flags & _EXCLUDE_IPV6)) {
+        if (_ipv6_socket_broken()) {
+            warn("IPv6 support disabled. getaddrinfo is broken in Perl $^V"
+                 . " with Socket $Socket::VERSION.");
+            $flags |= _EXCLUDE_IPV6;
+        }
+        elsif (!_ipv6_supported()) {
+            warn("IPv6 support disabled. It doesn't seem to be supported on"
+                 . " your system.");
+            $flags |= _EXCLUDE_IPV6;
+        }
+    }
 
     for my $rir (@rirs) {
         my $file;

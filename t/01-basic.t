@@ -2,8 +2,11 @@ use strict;
 use warnings;
 
 use Test::More tests => 72;
+
 BEGIN { use_ok('IP::Country::DB_File') };
 BEGIN { use_ok('IP::Country::DB_File::Builder') };
+
+my $ipv6_supported = IP::Country::DB_File::Builder::_ipv6_supported();
 
 my $filename = 't/ipcc.db';
 unlink($filename);
@@ -17,14 +20,29 @@ unlink($filename);
     my $builder = IP::Country::DB_File::Builder->new($filename);
     ok(defined($builder), 'new');
 
+    my $num_ranges_v4  = 81;
+    my $num_ranges_v6  = 5;
+    my $priv_ranges_v4 = 3;
+    my $priv_ranges_v6 = 1;
+    my $flags          = 0;
+
+    if (!$ipv6_supported) {
+        $flags          = IP::Country::DB_File::Builder::_EXCLUDE_IPV6;
+        $num_ranges_v6  = 0;
+        $priv_ranges_v6 = 0;
+    }
+
     ok(open(my $file, '<', 't/delegated-test'), 'open source file');
-    is($builder->_import_file($file, 0), 86, 'import file');
+    is($builder->_import_file($file, $flags), $num_ranges_v4 + $num_ranges_v6,
+       'import file');
     $builder->_store_private_networks($flags);
     $builder->_sync();
     close($file);
 
-    is($builder->num_ranges_v4, 84, 'num_ranges_v4');
-    is($builder->num_ranges_v6, 6, 'num_ranges_v6');
+    is($builder->num_ranges_v4, $num_ranges_v4 + $priv_ranges_v4,
+       'num_ranges_v4');
+    is($builder->num_ranges_v6, $num_ranges_v6 + $priv_ranges_v6,
+       'num_ranges_v6');
     is($builder->num_addresses_v4, 40337408, 'num_addresses_v4');
 }
 
@@ -115,11 +133,17 @@ my @tests_v6 = qw(
     ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff ?
 );
 
-for (my $i = 0; $i < @tests_v6; $i += 2) {
-    my ($ip, $test_cc) = ($tests_v6[$i], $tests_v6[$i+1]);
-    my $cc = $ipcc->inet6_atocc($ip);
-    $cc = '?' unless defined($cc);
-    ok($cc eq $test_cc, "lookup $ip, got $cc, expected $test_cc");
+SKIP: {
+    skip("Socket doesn't support IPv6", 18)
+        if !$ipv6_supported;
+
+    for (my $i = 0; $i < @tests_v6; $i += 2) {
+        my ($ip, $test_cc) = ($tests_v6[$i], $tests_v6[$i+1]);
+        my $cc = $ipcc->inet6_atocc($ip);
+        $cc = '?' unless defined($cc);
+        ok($cc eq $test_cc, "lookup $ip, got $cc, expected $test_cc");
+    }
 }
 
 unlink($filename);
+
