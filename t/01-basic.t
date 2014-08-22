@@ -28,6 +28,9 @@ unlink($filename);
     is($builder->num_addresses_v4, 40337408, 'num_addresses_v4');
 }
 
+# Sleep on Windows and hope that mtime gets updated.
+sleep(1) if $^O =~ /mswin|cygwin/i;
+
 ok(-e $filename, 'create db');
 
 my $ipcc = IP::Country::DB_File->new($filename);
