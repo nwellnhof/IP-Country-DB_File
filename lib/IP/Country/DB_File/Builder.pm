@@ -30,7 +30,11 @@ sub new {
     my ($class, $db_file) = @_;
     $db_file = 'ipcc.db' unless defined($db_file);
 
-    my $this = {};
+    my $this = {
+        num_ranges_v4    => 0,
+        num_ranges_v6    => 0,
+        num_addresses_v4 => 0,
+    };
 
     my %db;
     my $flags = Fcntl::O_RDWR|Fcntl::O_CREAT|Fcntl::O_TRUNC;
@@ -69,17 +73,25 @@ sub _store_ip_range {
 }
 
 sub _store_private_networks {
-    my $this = shift;
+    my ($this, $flags) = @_;
 
-    # 10.0.0.0
-    $this->_store_ip_range('ipv4', 0x0a000000, 0x0b000000, '**');
-    # 172.16.0.0
-    $this->_store_ip_range('ipv4', 0xac100000, 0xac200000, '**');
-    # 192.168.0.0
-    $this->_store_ip_range('ipv4', 0xc0a80000, 0xc0a90000, '**');
+    if (!($flags & _EXCLUDE_IPV4)) {
+        # 10.0.0.0
+        $this->_store_ip_range('ipv4', 0x0a000000, 0x0b000000, '**');
+        # 172.16.0.0
+        $this->_store_ip_range('ipv4', 0xac100000, 0xac200000, '**');
+        # 192.168.0.0
+        $this->_store_ip_range('ipv4', 0xc0a80000, 0xc0a90000, '**');
+    }
 
-    # fc00::/7
-    $this->_store_ip_range('ipv6', int64(0xfc) << 56, int64(0xfe) << 56, '**');
+    if (!($flags & _EXCLUDE_IPV6)) {
+        # fc00::/7
+        $this->_store_ip_range(
+            'ipv6',
+            int64(0xfc) << 56, int64(0xfe) << 56,
+            '**',
+        );
+    }
 }
 
 sub _import_file {
@@ -217,7 +229,7 @@ sub build {
         die("$filename: $error") if $error;
     }
 
-    $this->_store_private_networks();
+    $this->_store_private_networks($flags);
 
     $this->_sync();
 }

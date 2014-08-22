@@ -19,7 +19,7 @@ unlink($filename);
 
     ok(open(my $file, '<', 't/delegated-test'), 'open source file');
     is($builder->_import_file($file, 0), 86, 'import file');
-    $builder->_store_private_networks();
+    $builder->_store_private_networks($flags);
     $builder->_sync();
     close($file);
 
