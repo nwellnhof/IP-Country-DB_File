@@ -1,5 +1,11 @@
 Revision history for Perl module IP::Country::DB_File
 
+3.03  Aug 25 2014
+        - Skip db_time test on Windows
+        - More conservative check for broken Socket
+        - Minor documentation fixes
+        - Minor Dist::Zilla fixes
+
 3.02  Aug 22 2014
         - Disable IPv6 if it's not supported
         - Try to fix failing test on Windows
