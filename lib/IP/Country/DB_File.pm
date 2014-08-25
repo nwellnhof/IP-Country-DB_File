@@ -140,7 +140,8 @@ IPv6 support.
 
 =item *
 
-Pure Perl.
+Pure Perl. Math::Int64 is needed to build a database with IPv6 addresses
+but the lookup code only uses Perl core modules.
 
 =item *
 
