@@ -30,7 +30,7 @@ sub _EXCLUDE_IPV6 { 2 }
 # IPv6 support is broken in some Socket versions with older Perls.
 # (RT #98248)
 sub _ipv6_socket_broken {
-    return $^V < 5.14 && $Socket::VERSION >= 2.010;
+    return $^V < 5.14 && $Socket::VERSION >= 2.010 && $Socket::VERSION < 2.016;
 }
 
 sub _ipv6_supported {
@@ -234,7 +234,8 @@ sub build {
         warn("IPv6 support disabled. It doesn't seem to be supported on"
              . " your system.");
         warn("This is probably because getaddrinfo is broken in Perl $^V"
-             . " with Socket $Socket::VERSION.")
+             . " with Socket $Socket::VERSION. Please upgrade to Socket"
+             . " 2.016.")
             if _ipv6_socket_broken();
         $flags |= _EXCLUDE_IPV6;
     }
