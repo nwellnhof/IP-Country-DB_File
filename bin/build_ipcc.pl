@@ -73,7 +73,7 @@ otherwise this command does nothing.
 
 =head2 -f
 
-Fetch statistics files via FTP.
+Fetch statistics files via HTTPS.
 
 =head2 -b
 

@@ -11,7 +11,7 @@ use Math::Int64 qw(
     int64 int64_to_net net_to_int64
     :native_if_available
 );
-use Net::FTP ();
+use LWP::UserAgent ();
 use Socket 1.94 ();
 
 # Regional Internet Registries
@@ -265,25 +265,24 @@ sub fetch_files {
     my ($class, $dir, $verbose) = @_;
     $dir = '.' unless defined($dir);
 
+    my $ua = LWP::UserAgent->new();
+
     for my $rir (@rirs) {
         my $server = $rir->{server};
         my $name = $rir->{name};
-        my $ftp_dir = "/pub/stats/$name";
         my $filename = "delegated-$name-extended-latest";
+        my $url = "https://$server/pub/stats/$name/$filename";
 
-        print("Fetching ftp://$server$ftp_dir/$filename\n") if $verbose;
+        print("Fetching $url\n") if $verbose;
 
-        my $ftp = Net::FTP->new($server)
-            or die("Can't connect to FTP server $server: $@");
-        $ftp->login('anonymous', '-anonymous@')
-            or die("Can't login to FTP server $server: " . $ftp->message());
-        $ftp->cwd($ftp_dir)
-            or die("Can't find directory $ftp_dir on FTP server $server: " .
-                   $ftp->message());
-        $ftp->get($filename, "$dir/delegated-$name")
-            or die("Get $filename from FTP server $server failed: " .
-                   $ftp->message());
-        $ftp->quit();
+        my $response = $ua->get($url,
+            ':content_file' => "$dir/delegated-$name",
+        );
+        die("$url: " . $response->status_line)
+            if !$response->is_success;
+        my $died = $response->header('X-Died');
+        die("$url: $died")
+            if defined($died);
     }
 }
 
@@ -319,11 +318,11 @@ The database is built from the publically available statistics files of the
 Regional Internet Registries. Currently, the files are downloaded from the
 following hard-coded locations:
 
-    ftp://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest
-    ftp://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-extended-latest
-    ftp://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-extended-latest
-    ftp://ftp.apnic.net/pub/stats/apnic/delegated-apnic-extended-latest
-    ftp://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-extended-latest
+    https://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest
+    https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-extended-latest
+    https://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-extended-latest
+    https://ftp.apnic.net/pub/stats/apnic/delegated-apnic-extended-latest
+    https://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-extended-latest
 
 You can build the database directly from Perl, or by calling the
 C<build_ipcc.pl> command. Since the country code data changes occasionally,
@@ -376,7 +375,7 @@ build.
 
     IP::Country::DB_File::Builder->fetch_files( [$dir] );
 
-Fetches the statistics files from the FTP servers of the RIRs and stores them
+Fetches the statistics files from the HTTPS servers of the RIRs and stores them
 in I<$dir>. I<$dir> defaults to the current directory.
 
 This function only fetches files and doesn't build the database yet.
